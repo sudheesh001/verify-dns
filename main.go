@@ -37,7 +37,7 @@ func ScanAndWriteResult(ipAddresses []net.IP, parallelism int, reportFrequency i
 			log.Fatalf(fmt.Sprintf("failed to acquire semaphore. Index: %v\n", scanID))
 		}
 		wg.Add(1)
-		go func() {
+		go func(ip net.IP) {
 			result := Probe(ip, query)
 			if result != nil {
 				if _, err := f.WriteString(result.Serialize()); err != nil {
@@ -46,7 +46,7 @@ func ScanAndWriteResult(ipAddresses []net.IP, parallelism int, reportFrequency i
 			}
 			sem.Release(1)
 			wg.Done()
-		}()
+		}(ip)
 	}
 
 	wg.Wait()
