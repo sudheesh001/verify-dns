@@ -12,7 +12,7 @@ import (
 	"sync"
 )
 
-func ScanAndWriteResult(ipAddresses []net.IP, parallelism int, reportFrequency int, outfile string) error {
+func ScanAndWriteResult(hostQuery string, ipAddresses []net.IP, parallelism int, reportFrequency int, outfile string) error {
 	f, err := os.OpenFile(outfile, os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0644)
 	if err != nil {
 		log.Fatalf("unable to create file: %v. Error: %v\n", outfile, err)
@@ -22,7 +22,7 @@ func ScanAndWriteResult(ipAddresses []net.IP, parallelism int, reportFrequency i
 	var sem = semaphore.NewWeighted(int64(parallelism))
 	var wg sync.WaitGroup
 
-	query := PrepareQuestion("google.com.")
+	query := PrepareQuestion(hostQuery)
 
 	if _, err := f.WriteString(TelemetryHeader()); err != nil {
 		log.Println("failed to write header to disk in output file.")
@@ -62,7 +62,9 @@ func VerifyDNS(ctx *cli.Context) error {
 	outputFile := ctx.String("output")
 	parallelism := ctx.Int("parallelism")
 	reportFrequency := ctx.Int("report")
-	return ScanAndWriteResult(ipAddresses, parallelism, reportFrequency, outputFile)
+
+	query := ctx.String("query")
+	return ScanAndWriteResult(query, ipAddresses, parallelism, reportFrequency, outputFile)
 }
 
 func main() {
@@ -71,6 +73,12 @@ func main() {
 		Usage:  "Verify that the IP Address contains an open recursive DNS Resolver",
 		Action: VerifyDNS,
 		Flags: []cli.Flag{
+			&cli.StringFlag{
+				Name:    "query",
+				Aliases: []string{"q"},
+				Usage:   "The query to make to each open resolver.",
+				Value:   "google.com.",
+			},
 			&cli.StringFlag{
 				Name:     "input",
 				Aliases:  []string{"i"},
