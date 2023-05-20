@@ -12,7 +12,7 @@ import (
 	"sync"
 )
 
-func ScanAndWriteResult(hostQuery string, ipAddresses []net.IP, parallelism int, reportFrequency int, outfile string) error {
+func ScanAndWriteResult(hostQuery string, ipAddresses []net.IP, useTLS bool, parallelism int, reportFrequency int, outfile string) error {
 	f, err := os.OpenFile(outfile, os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0644)
 	if err != nil {
 		log.Fatalf("unable to create file: %v. Error: %v\n", outfile, err)
@@ -38,7 +38,7 @@ func ScanAndWriteResult(hostQuery string, ipAddresses []net.IP, parallelism int,
 		}
 		wg.Add(1)
 		go func(ip net.IP) {
-			result := Probe(ip, query)
+			result := Probe(ip, query, useTLS)
 			if result != nil {
 				if _, err := f.WriteString(result.Serialize()); err != nil {
 					log.Println("failed to write to disk")
@@ -62,9 +62,13 @@ func VerifyDNS(ctx *cli.Context) error {
 	outputFile := ctx.String("output")
 	parallelism := ctx.Int("parallelism")
 	reportFrequency := ctx.Int("report")
+	useTLS := ctx.Bool("tls")
+	if useTLS {
+		fmt.Printf("Using DoH/DoT\n")
+	}
 
 	query := ctx.String("query")
-	return ScanAndWriteResult(query, ipAddresses, parallelism, reportFrequency, outputFile)
+	return ScanAndWriteResult(query, ipAddresses, useTLS, parallelism, reportFrequency, outputFile)
 }
 
 func main() {
@@ -78,6 +82,10 @@ func main() {
 				Aliases: []string{"q"},
 				Usage:   "The query to make to each open resolver.",
 				Value:   "google.com.",
+			},
+			&cli.BoolFlag{
+				Name:  "tls",
+				Usage: "Use port 443 and connect to DoT/DoH resolvers",
 			},
 			&cli.StringFlag{
 				Name:     "input",
